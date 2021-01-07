@@ -1,7 +1,9 @@
-//запуск делал через php-консоль
+
 require_once($_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/classes/general/csv_data.php"); 
 
-$BLOCK_ID = 13;
+$BLOCK_ID = 15;
+$LIMIT    = 6;
+$COUNT    = 0;
 
 $filePath = $_SERVER["DOCUMENT_ROOT"]."/test.csv"; 
 $csvFile = new CCSVData('R', false);
@@ -12,30 +14,14 @@ CModule::IncludeModule("iblock");
 
 $el = new CIBlockElement; 
 $array_csv = array();
-$i=0;
-while ($arFields = $csvFile->Fetch()) 
-{
-	$PROP = array();
-    $PROP['id'] = $arFields[0];  
-    $PROP['name'] = $arFields[1];
-    $PROP['preview_text'] = $arFields[2]; 
-    $PROP['detail_text'] = $arFields[3];
-    $PROP['prop1'] = $arFields[4];  
-    $PROP['prop2'] = $arFields[5];
-	$array_csv[$i] = $PROP;
-    $i++;
-}
-unset($array_csv[0]);
-sort($array_csv);
 
 $arSelect = Array(
 		"ID", 
-		"PROPERTY_id", 
-		"PROPERTY_name",
-		"PROPERTY_preview_text",
-		"PROPERTY_detail_text",
-		"PROPERTY_prop1",
-		"PROPERTY_prop2"); 
+		"DETAIL_TEXT", 
+		"PROPERTY_PROP1",
+		"PROPERTY_PROP2",
+		"NAME",
+		"PREVIEW_TEXT"); 
 
 $arFilter = Array(
 		"IBLOCK_ID"=>$BLOCK_ID, 
@@ -45,23 +31,73 @@ $arFilter = Array(
 $res = CIBlockElement::GetList(Array(), $arFilter, false, false, $arSelect);
 $ress= array();
 $PRODUCT_ID = array();
-$i=0;
-while($ob = $res->GetNextElement())
-{
-  $result = array();
-  $arFields = $ob->GetFields();
-  $result['id'] = $arFields['PROPERTY_ID_VALUE'];
-  $result['name'] = $arFields['PROPERTY_NAME_VALUE'];
-  $result['preview_text'] = $arFields['PROPERTY_PREVIEW_TEXT_VALUE'];
-  $result['detail_text'] = $arFields['PROPERTY_DETAIL_TEXT_VALUE'];
-  $result['prop1'] = $arFields['PROPERTY_PROP1_VALUE'];
-  $result['prop2'] = $arFields['PROPERTY_PROP2_VALUE'];
-  $ress[$i] = $result;
-  $PRODUCT_ID[$i] = $arFields['ID'];
-  $i++;
-}
 
-//функция по сравеннию массивов
+$res_diff = array();
+#сделать подсчет максимальной длины массивов, пока i<277
+//$count = max(count($csvFile->Fetch()),count($res->Fetch()));
+
+for($i = 0; $i<=277; $i++){
+	if($arFields = $csvFile->Fetch()) 
+	{	
+		$PROP = array(); 
+		$PROP['name'] = $arFields[1];
+		$PROP['preview_text'] = $arFields[2]; 
+		$PROP['detail_text'] = $arFields[3];
+		$PROP['prop1'] = $arFields[4];  
+		$PROP['prop2'] = $arFields[5];
+		$array_csv[$i] = $PROP;
+	};
+	if($ob = $res->GetNextElement())
+	{	
+		$result = array();
+		$arFields = $ob->GetFields();
+		$result['name'] = $arFields['NAME'];
+		$result['preview_text'] = $arFields['PREVIEW_TEXT'];
+		$result['detail_text'] = $arFields['DETAIL_TEXT'];
+		$result['prop1'] = $arFields['PROPERTY_PROP1_VALUE'];
+		$result['prop2'] = $arFields['PROPERTY_PROP2_VALUE'];
+		$ress[$i] = $result;
+		$PRODUCT_ID[$i] = $arFields['ID'];
+	}
+
+	$res_diff = diff($array_csv[$i],$ress[$i]);
+
+	if(!empty($res_diff)){
+		updateUp($res_diff, $PRODUCT_ID[$i], $BLOCK_ID);
+	} else echo"";
+};
+
+function updateUp($array_diff,$prod_id, $block_id){
+	$el = new CIBlockElement;
+	$keys = array_keys($array_diff);
+	$arLoadProductArray = Array(
+	  "IBLOCK_ID"      => $block_id,
+	  "ACTIVE"         => "Y",
+	);
+	$PROP = array();
+	foreach($keys as $k=>$v){
+	if($keys[$k] == 'name') $arLoadProductArray["NAME"] = $array_diff["name"];
+	if($keys[$k] == 'preview_text') $arLoadProductArray["PREVIEW_TEXT"] = $array_diff["preview_text"];
+	if($keys[$k] == 'detail_text') $arLoadProductArray["DETAIL_TEXT"] = $array_diff["detail_text"];
+	if(($keys[$k] == 'prop1') || ($keys[$k] == 'prop2')) {
+		if($keys[$k] == 'prop1')
+		$PROP['prop1'] = $array_diff['prop1'];
+		if($keys[$k] == 'prop2')
+		$PROP['prop2'] = $array_diff['prop2'];
+		CIBlockElement::SetPropertyValuesEx($prod_id, $block_id, $PROP);
+	}
+};
+		if($res = $el->Update($prod_id, $arLoadProductArray)){
+		echo"Я изменил";
+		} else {
+			$arLoadProductArray["PROPERTY_VALUES"] = $PROP;
+			print_r($arLoadProductArray);
+			$res_add = $el->Add($arLoadProductArray);
+		}
+};
+
+
+
 function diff($arr1,$arr2){
 $diff = array();
 foreach($arr1 as $key => $value)
@@ -91,31 +127,5 @@ foreach($arr1 as $key => $value)
     }
 }
 return $diff;
-}
-$diff = diff($array_csv, $ress);
-print_r($diff);
-
-
-foreach($diff as $k=>$v){
-$res = CIblockElement::GetList([], ["IBLOCK_ID" => $IBLOCK_ID, "NAME" => $diff[$k]['id']], false, false, ["ID"]);
-	if(count($array_csv)==count($ress)){
-while ($ob = $res->GetNext()) {
-    CIblockElement::SetPropertyValuesEx($PRODUCT_ID[$k], $IBLOCK_ID, $diff[$k]);
-};}
-	else{
-  	$arLoadProductArray = Array(
-      "IBLOCK_ID"         => $BLOCK_ID, 
-      "PROPERTY_VALUES"   => $diff[$k], 
-      "NAME"              => $diff[$k]['id'], 
-      "ACTIVE"            => "Y", 
-    );
-
-    if($res_add = $el->Add($arLoadProductArray)) 
-    {
-        echo "ID: ".$diff[$k]['id']." добавлен<br>";
-		unset($diff[$k]);
-    } else 
-		echo "Я честно пытался";
-}
-}
+};
 
