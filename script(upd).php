@@ -34,7 +34,6 @@ $PRODUCT_ID = array();
 
 $res_diff = array();
 #сделать подсчет максимальной длины массивов, пока i<277
-//$count = max(count($csvFile->Fetch()),count($res->Fetch()));
 
 for($i = 0; $i<=277; $i++){
 	if($arFields = $csvFile->Fetch()) 
