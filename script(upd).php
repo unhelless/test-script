@@ -1,9 +1,7 @@
-
 require_once($_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/classes/general/csv_data.php"); 
 
 $BLOCK_ID = 15;
-$LIMIT    = 6;
-$COUNT    = 0;
+
 
 $filePath = $_SERVER["DOCUMENT_ROOT"]."/test.csv"; 
 $csvFile = new CCSVData('R', false);
@@ -33,9 +31,12 @@ $ress= array();
 $PRODUCT_ID = array();
 
 $res_diff = array();
-#сделать подсчет максимальной длины массивов, пока i<277
 
-for($i = 0; $i<=277; $i++){
+//сделать автоматический подсчет максимальной длины для for
+
+
+
+for($i = 0; $i<=20; $i++){
 	if($arFields = $csvFile->Fetch()) 
 	{	
 		$PROP = array(); 
@@ -45,6 +46,7 @@ for($i = 0; $i<=277; $i++){
 		$PROP['prop1'] = $arFields[4];  
 		$PROP['prop2'] = $arFields[5];
 		$array_csv[$i] = $PROP;
+
 	};
 	if($ob = $res->GetNextElement())
 	{	
@@ -66,6 +68,10 @@ for($i = 0; $i<=277; $i++){
 	} else echo"";
 };
 
+
+//---------------Функции---------------//
+
+// Функция на изменение/добавление элементов
 function updateUp($array_diff,$prod_id, $block_id){
 	$el = new CIBlockElement;
 	$keys = array_keys($array_diff);
@@ -90,13 +96,11 @@ function updateUp($array_diff,$prod_id, $block_id){
 		echo"Я изменил";
 		} else {
 			$arLoadProductArray["PROPERTY_VALUES"] = $PROP;
-			print_r($arLoadProductArray);
 			$res_add = $el->Add($arLoadProductArray);
 		}
 };
 
-
-
+// Разность двух массивов
 function diff($arr1,$arr2){
 $diff = array();
 foreach($arr1 as $key => $value)
@@ -127,4 +131,5 @@ foreach($arr1 as $key => $value)
 }
 return $diff;
 };
+
 
