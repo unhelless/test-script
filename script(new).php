@@ -109,7 +109,6 @@ function updateUp($array_diff,$prod_id, $block_id){
 			$PROP['prop1'] = $array_diff[$k]['prop1'];
 			if(in_array($array_diff[$k]['prop2'],$array_diff[$k]))
 			$PROP['prop2'] = $array_diff[$k]['prop2'];
-			print_r($PROP);
 			}
 			CIBlockElement::SetPropertyValuesEx($prod_id[$k], $block_id, $PROP);
 
